@@ -14,7 +14,14 @@ int main(int argc, char* argv[]){
     }
 
 	boost::asio::io_context io_context;
-	balancerServer balancerServer(io_context);
+	LoadBalancer loadBalancer(6000);
+	}
+
+  catch (std::exception& e)
+  {
+    std::cerr << e.what() << std::endl;
+  }
+
  
   return 0;
 }

@@ -6,32 +6,32 @@
 #include "../shared/tcp.hpp"
 #include <boost/shared_ptr.hpp>
 
-
 class balancerConnection : public tcp_connection<balancerConnection> {
-	private:
-		void handle_write(const boost::system::error_code&, size_t bytes_transferred){
-			message_ = "hello " + message_ + " im balancer";
-		}
+	public:
 
-		void handle_read(const boost::system::error_code&, size_t bytes_transferred)
+		void handle_write(const boost::system::error_code&, size_t bytes_transferred)
 		{
-			message_ = std::string( (std::istreambuf_iterator<char>(&buffer)), 
-						std::istreambuf_iterator<char>() );
-			std::cout << "[BALANCER]: " << message_ << std::endl;
 			//then : 
-			boost::asio::async_read_until(socket_, buffer, "\r\n",
+			boost::asio::async_read_until(socket_, buffer_, "\r\n",
 					boost::bind(&balancerConnection::handle_read, shared_from_this(),
 						boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
 		}
 
-	public: 
-		void start(std::string request){
+		void start(){
 			//write request. Does not need to be async ?
-			socket_.async_write_some(request,
+			boost::asio::async_write(socket_, boost::asio::buffer(request_),
 					boost::bind(&balancerConnection::handle_write, shared_from_this(),
 						boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
+		}
+
+		void handle_read(const boost::system::error_code&, size_t bytes_transferred){
+			message_ = "hello " + message_ + " im balancer";
+
+			message_ = std::string( (std::istreambuf_iterator<char>(&buffer_)), 
+						std::istreambuf_iterator<char>() );
+			std::cout << "[BALANCER]: " << message_ << std::endl;
 		}
 };
 
@@ -43,7 +43,7 @@ class Machine { //represent a machine(server) from the standpoint of a load bala
 
 		Machine(std::string addr, std::string port);
 
-		void connect();//no
+		void connect();
 
 		void run();//yes
 		void request(std::string path);
@@ -57,25 +57,36 @@ class Machine { //represent a machine(server) from the standpoint of a load bala
 //		std::cout << buf.data() << std::endl ;
 	//	}
 	//
+		std::string getPort(){
+			return this->port;
+		}
+
+		std::string getAddr(){
+			return this->addr;
+		}
+
 	private:
 		std::string port;
 		std::string addr;
+
 		boost::asio::io_context io_context_;
 		tcp::resolver resolver_;
-		tcp::socket socket_ ;
+		tcp::socket socket_;
 };
 
 class LoadBalancer{
 	public:
-		LoadBalancer();
+		LoadBalancer(int port);
 		void connectTo(Machine *);
+		void connectAll();
+		void startServer();
 		Machine * initMachine(std::string addr, std::string port);
+		
 
 	private: 
 		std::vector<Machine * > machines;
-		balancerConnection * balancerConnection = new balancerServer();
+		tcp_server<balancerConnection> * server;
+		int port;
 };
-
-
 
 #endif
