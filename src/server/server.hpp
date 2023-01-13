@@ -7,15 +7,15 @@
 
 using boost::asio::ip::tcp;
 
-class tcp_connection
-  : public boost::enable_shared_from_this<tcp_connection>{
+class Tcp_connection
+  : public boost::enable_shared_from_this<Tcp_connection>{
 	public:
-		typedef boost::shared_ptr<tcp_connection> pointer;
+		typedef boost::shared_ptr<Tcp_connection> pointer;
 
 		static pointer create(boost::asio::io_context& io_context)
 		{
 
-			return pointer(new tcp_connection(io_context));
+			return pointer(new Tcp_connection(io_context));
 		}
 
 		tcp::socket& socket()
@@ -34,13 +34,13 @@ class tcp_connection
 		void start(){
 			//read until then write
 			boost::asio::async_read_until(socket_, buffer, "\r\n",
-					boost::bind(&tcp_connection::handle_read, shared_from_this(),
+					boost::bind(&Tcp_connection::handle_read, shared_from_this(),
 						boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
 	}
 
 	private:
-		tcp_connection(boost::asio::io_context& io_context)
+		Tcp_connection(boost::asio::io_context& io_context)
 			: socket_(io_context)
 		{
 			buffer.prepare(1024);
@@ -51,10 +51,10 @@ class tcp_connection
 			message_ = std::string( (std::istreambuf_iterator<char>(&buffer)), std::istreambuf_iterator<char>() );
 			std::cout << "read: " << message_ << std::endl;
 			//then : 
-			socket_.async_write_some(boost::asio::buffer(message_),
-					boost::bind(&tcp_connection::handle_write, shared_from_this(),
-						boost::asio::placeholders::error,
-						boost::asio::placeholders::bytes_transferred));
+			//socket_.async_write_some(boost::asio::buffer(message_),
+			//		boost::bind(&Tcp_connection::handle_write, shared_from_this(),
+			//			boost::asio::placeholders::error,
+			//			boost::asio::placeholders::bytes_transferred));
 		}
 
 		void handle_write(const boost::system::error_code& /*error*/,
@@ -69,11 +69,11 @@ class tcp_connection
 };
 
 
-class tcp_server{
+class Tcp_server{
 	public:
-		tcp_server(boost::asio::io_context& io_context)
+		Tcp_server(boost::asio::io_context& io_context, int port)
 			: io_context_(io_context),
-				acceptor_(io_context, tcp::endpoint(tcp::v4(), 6969))
+				acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
 		{
 			start_accept();
 		}
@@ -81,15 +81,15 @@ class tcp_server{
 	private:
 		void start_accept()
 		{
-			tcp_connection::pointer new_connection =
-				tcp_connection::create(io_context_);
+			Tcp_connection::pointer new_connection =
+				Tcp_connection::create(io_context_);
 
 			acceptor_.async_accept(new_connection->socket(),
-					boost::bind(&tcp_server::handle_accept, this, new_connection,
+					boost::bind(&Tcp_server::handle_accept, this, new_connection,
 						boost::asio::placeholders::error));
 		}
 
-		void handle_accept(tcp_connection::pointer new_connection,
+		void handle_accept(Tcp_connection::pointer new_connection,
 				const boost::system::error_code& error)
 		{
 			if (!error)

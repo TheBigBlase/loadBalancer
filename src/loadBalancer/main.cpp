@@ -4,8 +4,6 @@
 #include <boost/asio.hpp>
 #include "loadBalancer.hpp"
 
-using boost::asio::ip::tcp;
-
 int main(int argc, char* argv[]){
   try{
     if (argc != 1){
@@ -13,10 +11,9 @@ int main(int argc, char* argv[]){
       return 1;
     }
 
-	boost::asio::io_context io_context;
-	LoadBalancer loadBalancer(6000);
+		LoadBalancer loadBalancer(6000);
+		std::cout << "loaded" << std::endl;
 	}
-
   catch (std::exception& e)
   {
     std::cerr << e.what() << std::endl;

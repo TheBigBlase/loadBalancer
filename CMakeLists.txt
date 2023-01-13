@@ -3,6 +3,9 @@ project(loadBalancer)
 
 set(CMAKE_CXX_STANDARD 17)
 
+find_package(Boost COMPONENTS thread system REQUIRED)
+include_directories(${Boost_INCLUDE_DIR})
+
 add_executable(client
         src/client/client.cpp
         src/client/main.cpp
@@ -17,3 +20,5 @@ add_executable(server
         src/server/server.cpp
         src/server/main.cpp
         )
+
+target_link_libraries(loadBalancer ${Boost_LIBRARIES})
