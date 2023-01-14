@@ -41,13 +41,12 @@ class BalancerConnection
 							boost::asio::placeholders::bytes_transferred));
 		}
 
-		void write_callback(const boost::system::error_code&, size_t bytes_transferred) {
+		void write_handler(const boost::system::error_code&, size_t bytes_transferred) {
 			read();
 		}
 
 		void handle_read(const boost::system::error_code&, size_t bytes_transferred) {
 			//runs once socket has finished
-			message_ = std::string( (std::istreambuf_iterator<char>(&buffer_)), std::istreambuf_iterator<char>() );
 
 			message_ = std::string( (std::istreambuf_iterator<char>(&buffer_)), 
 						std::istreambuf_iterator<char>() );
@@ -57,7 +56,7 @@ class BalancerConnection
 
 		void write() {
 			boost::asio::async_write(socket_, buffer_,
-				boost::bind(&BalancerConnection::write_callback, shared_from_this(),
+				boost::bind(&BalancerConnection::write_handler, shared_from_this(),
 					boost::asio::placeholders::error,
 					boost::asio::placeholders::bytes_transferred));
 		}
@@ -70,9 +69,9 @@ class BalancerConnection
 
 class BalancerServer {
 	public:
-		BalancerServer(boost::asio::io_context& io_context, int port)
+		BalancerServer(boost::asio::io_context& io_context, const int serverPort)
 				: io_context_(io_context),
-				acceptor_(io_context, tcp::endpoint(tcp::v4(), port)){
+				acceptor_(io_context, tcp::endpoint(tcp::v4(), serverPort)){
 			start_accept();
 		}
 
@@ -91,6 +90,7 @@ class BalancerServer {
 		void handle_accept(BalancerConnection::pointer new_connection,
 				const boost::system::error_code& error) {
 			if (!error) {
+				std::cout << "[SERVER] new con" << std::endl;
 				new_connection->start();
 			}
 
@@ -132,7 +132,8 @@ class Machine { //represent a machine(server) from the standpoint of a load bala
 
 class LoadBalancer{
 	public:
-		LoadBalancer(int port);
+		LoadBalancer(boost::asio::io_context&, int port);
+		void run();
 		void connectTo(Machine *);
 		void connectAll();
 		BalancerServer * startServer(boost::asio::io_context&);
@@ -141,9 +142,10 @@ class LoadBalancer{
 		
 
 	private: 
-		std::vector<Machine * > machines;
-		BalancerServer * server;
-		int port;
+		std::vector<Machine * > machines_;
+		BalancerServer * server_;
+		const int port_;
+		boost::asio::io_context& io_context_;
 };
 
 

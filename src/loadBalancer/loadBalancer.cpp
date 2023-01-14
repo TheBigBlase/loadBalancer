@@ -6,7 +6,7 @@
 
 using boost::asio::ip::tcp;
 
-void BalancerServer::run() {
+void BalancerServer::run(){
 	this->io_context_.run();
 }
 
@@ -18,11 +18,9 @@ void Machine::connect() {
 
 Machine::Machine(std::string addr, std::string port)
 		: socket_(io_context_), resolver_(io_context_), io_context_() {
-	;
 	
 	this->port = port;
 	this->addr = addr;
-	std::cout << this << std::endl;
 }
 
 
@@ -37,14 +35,14 @@ void LoadBalancer::connectTo(Machine *m) {
 }
 
 void LoadBalancer::connectAll() {
-	for(auto * m : this->machines) {
+	for(auto * m : this->machines_) {
 		m->connect();
 	}
 }
 
 BalancerServer * LoadBalancer::startServer(boost::asio::io_context& serverContext) {
-	this->server = new BalancerServer(serverContext, this->port);
-	return this->server;
+	this->server_ = new BalancerServer(serverContext, this->port_);
+	return this->server_;
 }
 
 Machine * LoadBalancer::initMachine(std::string address, std::string port) {
@@ -53,28 +51,26 @@ Machine * LoadBalancer::initMachine(std::string address, std::string port) {
 	return machine;
 }
 
-LoadBalancer::LoadBalancer(int port) {
-	boost::asio::io_service serverContext;
+LoadBalancer::LoadBalancer(boost::asio::io_context&  io_context, const int port) : io_context_{io_context}, port_{port}{
 	//idk why i have to do that like that, but if i declare the server io context
 	//inside his class, a segfault occurs
-	this->startServer(serverContext);
-	//thread didnt work ? or i didnt understand it at all
-	//anyway, launch it asyncly
-
-	boost::thread t{boost::bind(&boost::asio::io_service::run, &serverContext)};
-	std::cout << serverContext.stopped() << std::endl;
-	sleep(1);
+	this->startServer(io_context_);
 
 	for(auto k : machinesOpt) {//for all that are declared in the option header
 		auto tmp = new Machine(k.first, k.second);
 		tmp->connect();
 		std::cout << "[MACHINE] connected to " << k.first << ":" << k.second <<std::endl;
+		machines_.push_back(tmp);
 	}
-	this->port = port;
 }
 
 void LoadBalancer::sendToAll(std::string req) {
-	for(Machine * m : this->machines) {
+	for(Machine * m : this->machines_) {
+		std::cout << m->getAddr() << std::endl;
 		m->request(req);
 	}
+}
+
+void LoadBalancer::run() {
+	this->io_context_.run();
 }
