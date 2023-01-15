@@ -1,9 +1,11 @@
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <iostream>
 #include <sstream>
+#include <fstream>
+#include <regex>
 
 using boost::asio::ip::tcp;
 
@@ -22,50 +24,93 @@ class Tcp_connection
 		{
 			return socket_;
 		}
-
-		void read_file(){
-
-		}
-
-		void write_file(){
-
-		}
-
 		void start(){
 			//read until then write
-			boost::asio::async_read_until(socket_, buffer, "\r\n",
+			boost::asio::async_read_until(socket_, buffer_, "\r\n",
 					boost::bind(&Tcp_connection::handle_read, shared_from_this(),
 						boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
-	}
+		}
 
 	private:
 		Tcp_connection(boost::asio::io_context& io_context)
 			: socket_(io_context)
 		{
-			buffer.prepare(1024);
+			buffer_.prepare(1024);
 		}
 
 		void handle_read(const boost::system::error_code& /*error*/,
 				size_t bytes_transferred){
-			message_ = std::string( (std::istreambuf_iterator<char>(&buffer)), std::istreambuf_iterator<char>() );
-			std::cout << "read: " << message_ << std::endl;
+			message_ = std::string( (std::istreambuf_iterator<char>(&buffer_)), std::istreambuf_iterator<char>() );
+			std::cout << "[SERVER] recived: \"" << message_ << "\"" << std::endl;
 			//then : 
-			//socket_.async_write_some(boost::asio::buffer(message_),
-			//		boost::bind(&Tcp_connection::handle_write, shared_from_this(),
-			//			boost::asio::placeholders::error,
-			//			boost::asio::placeholders::bytes_transferred));
+			handleCommands(message_);
 		}
 
-		void handle_write(const boost::system::error_code& /*error*/,
+		void write(std::string msg){
+			socket_.async_send(boost::asio::buffer(msg),
+					boost::bind(&Tcp_connection::handle_write, shared_from_this(),
+						boost::asio::placeholders::error,
+						boost::asio::placeholders::bytes_transferred));
+		}
+
+		void handle_write(const boost::system::error_code&,
 				size_t bytes_transferred){
-			message_ = "hello " + message_ + " im server";
-			std::cout << "send: " << message_ << std::endl;
+			std::cout << "[SERVER] connection closed." << std::endl;
+			//lying, it is close at the next operation, but close enough
+		}
+
+
+		std::vector<std::string> tokenizeWithSpace(std::string input){
+			auto const regex = std::regex{R"(\s+)"};//one or more space
+			auto const vec = std::vector<std::string>(
+					std::sregex_token_iterator{begin(input), end(input), regex, -1},
+					std::sregex_token_iterator{}
+			);
+			return vec;
+		}
+
+		std::string handleCommands(std::string request){
+			auto commandAndArgs = tokenizeWithSpace(request);
+			
+			if(commandAndArgs[0] == "get"){//compare first 3 chars
+				std::cout << "[GET] reading " << commandAndArgs[1] <<std::endl;
+				//commandAndArgs.erase(std::find(commandAndArgs.begin(), commandAndArgs.end(), 0));
+				this->read_file(std::ifstream{commandAndArgs[1]});
+			}
+
+			else if(commandAndArgs[0] == "write"){//compare first 3 chars
+				std::cout << "[WRITE] writing" << commandAndArgs[1] <<std::endl;
+				write_file(std::ofstream{commandAndArgs[1]}, commandAndArgs[2]);
+			}
+
+			else if(commandAndArgs[0] == "echo"){//compare first 3 chars
+				std::cout << "[ECHO] " << commandAndArgs[1] <<std::endl;
+				write(request);
+			}
+
+			else{
+				std::cout << "[COMMANDS] did not recognize command" << std::endl;
+			}
+			return "";
+		}
+
+		void read_file(std::ifstream file){
+			std::string buffer;
+			while (getline(file, buffer)) {
+				// Output the text from the file
+				write(buffer);
+			}
+			//write("\r\n");
+		}
+
+		void write_file(std::ofstream file, std::string content){
+			file << content;
 		}
 
 		tcp::socket socket_;
 		std::string message_;
-		boost::asio::streambuf buffer;
+		boost::asio::streambuf buffer_;
 };
 
 

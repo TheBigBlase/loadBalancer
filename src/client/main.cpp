@@ -6,11 +6,9 @@
 using boost::asio::ip::tcp;
 
 int main(int argc, char* argv[]){
-  try
-  {
-    if (argc != 3)
-    {
-      std::cerr << "Usage: client <host> <port>" << std::endl;
+  try {
+    if (argc != 4) {
+      std::cerr << "Usage: client <host> <port> <request>" << std::endl;
       return 1;
     }
 
@@ -20,13 +18,34 @@ int main(int argc, char* argv[]){
     tcp::resolver::results_type endpoints =
       resolver.resolve(argv[1], argv[2]);
 
+		//check if ends with \r\n, if not adds it
+		if(argv[3][0] == '\0'){//if string is empty, print error
+      std::cerr << "Usage: client <host> <port> <request>" << std::endl;
+      return 1;
+		}
+
+		char l = argv[3][0];
+		char k = argv[3][1];//not unsafe, since there is a char * len >= 1
+		for(char m {0} ; argv[3][m] != '\0' ; m++){
+			k = argv[3][m];
+			l = k;
+		}
+
+		std::string toSend;
+
+		if(!(k == '\n' && l == '\r')) {//adds if not in it
+			std::stringstream ss;
+			ss << argv[3] << "\r\n";
+			toSend = ss.str();
+		}
+		//im sure theres a better way to see it but hey
+
     tcp::socket socket(io_context);
     boost::asio::connect(socket, endpoints);
 
-		socket.send(boost::asio::buffer("client\r\n"));
+		socket.send(boost::asio::buffer(toSend));
 
-    for (;;)
-    {
+    for (;;) {
       boost::array<char, 128> buf;
       boost::system::error_code error;
 

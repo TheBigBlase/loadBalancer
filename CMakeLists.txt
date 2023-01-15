@@ -3,11 +3,11 @@ project(loadBalancer)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(useThisAsAComment this doesnt need to be here, it's not using thread anymore)
 find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 add_executable(client
-        src/client/client.cpp
         src/client/main.cpp
         )
 
@@ -17,7 +17,6 @@ add_executable(loadBalancer
         )
 
 add_executable(server
-        src/server/server.cpp
         src/server/main.cpp
         )
 
